@@ -2,6 +2,7 @@ import heapq
 import uuid
 import random
 from datetime import datetime as dt
+from matplotlib import pyplot as plt
 
 class Order:
     def __init__(self, side, price, quantity, timestamp):
@@ -18,6 +19,7 @@ class LOBSimulator:
         self.ask_book = [] # min heap
         self.order_map = {} # order_id -> Order
         self.trades = [] # list of all trades (price, quantity, timestamp)
+        self.last_trade_price = None # tracks trade price
 
 
     def check_order_book(self, order):
@@ -41,6 +43,7 @@ class LOBSimulator:
                 order.quantity -= trade_qty
                 best_order.quantity -= trade_qty
 
+                self.last_trade_price = abs(best_price)
                 self.trades.append((abs(best_price), trade_qty, order.timestamp))
 
                 if best_order.quantity > 0:
@@ -83,7 +86,7 @@ class LOBSimulator:
         book = self.ask_book if side == 'buy' else self.bid_book
 
         while quantity > 0 and book:
-            best_price, order_id = heapq.heappop(book)
+            best_price, best_timestamp, order_id = heapq.heappop(book)
 
             if order_id not in self.order_map:
                 continue
@@ -93,10 +96,11 @@ class LOBSimulator:
             quantity -= trade_qty
             order.quantity -= trade_qty
 
-            self.trades.append((self.time, order.price, trade_qty))
+            self.last_trade_price = abs(best_price)
+            self.trades.append((order.price, trade_qty, dt.now().timestamp()))
 
             if order.quantity > 0:
-                heapq.heappush(book, (best_price, order_id))
+                heapq.heappush(book, (best_price, best_timestamp, order_id))
             else:
                 del self.order_map[order_id]
 
@@ -135,24 +139,39 @@ class LOBSimulator:
         """
         best_bid = -self.bid_book[0][0] if self.bid_book else None
         best_ask = self.ask_book[0][0] if self.ask_book else None
-        return best_bid, best_ask
+        price = (best_ask + best_bid)/2 if best_ask is not None and best_bid is not None else best_bid if best_bid is not None else best_ask if best_ask is not None else None
+        return best_bid, best_ask, price
     
 
 if __name__ == '__main__':
     lob = LOBSimulator()
+    for i in range(10):
+        lob.add_limit_order('buy', 100 - i * 0.01, 10)
+        lob.add_limit_order('sell', 100 + i * 0.01, 10)
 
-    lob.add_limit_order('buy', 100, 5)
-    print(lob.best_bid_ask())
-    lob.add_limit_order('buy', 105, 5)
-    print(lob.best_bid_ask())
-    lob.add_limit_order('buy', 110, 5)
-    print(lob.best_bid_ask())
-    lob.add_limit_order('buy', 100, 5)
-    print(lob.best_bid_ask())
-    lob.add_limit_order('sell', 100, 10)
-    print(lob.best_bid_ask())
-    lob.add_limit_order('sell', 110, 5)
-    lob.cancel_random_order()
+    price_vector = []
 
-    print(lob.best_bid_ask())
-    print(lob.trades)
+    for i in range(0, 100*60):
+        price = lob.last_trade_price if lob.last_trade_price is not None else 100
+        volatility = random.gauss(0, 0.01)
+        order_price = round(price + volatility, 2)
+        
+        if random.random() < 0.075:
+            lob.process_market_order(random.choice(['buy', 'sell']), random.randint(10, 20))
+        elif random.random() < 0.26:
+            lob.process_market_order(random.choice(['buy', 'sell']), random.randint(1, 5))
+        else:
+            lob.add_limit_order(random.choice(['buy', 'sell']), order_price, random.randint(1, 10))
+
+        price_vector.append(price)
+
+        if i % 100 == 0:
+            lob.clean_order_books()
+            lob.cancel_random_order()
+
+
+    plt.plot(price_vector)
+    plt.show()
+
+
+
