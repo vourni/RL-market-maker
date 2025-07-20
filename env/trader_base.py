@@ -26,3 +26,4 @@ class TraderBase:
         if mid_price is None:
             return self.pnl
         return self.pnl + self.inventory * mid_price
+    
