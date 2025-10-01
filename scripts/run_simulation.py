@@ -10,7 +10,9 @@ from matplotlib import pyplot as plt
 import matplotlib.ticker as ticker
 
 if __name__ == '__main__':
+    random.seed(42)
     RL_wins = 0
+    
     for j in range(1,101):
         lob = LOBSimulator()
         agents = {
