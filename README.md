@@ -15,7 +15,7 @@ This project simulates a limit order book (LOB) market environment with multiple
 
 ## 📊 Results
 In experiments comparing the RL market maker to heuristic agents:
-- **RL agent won 71% of the time** across repeated simulations.
+- **RL agent won 71% of the time** across 100 simulations of 100,000 steps.
 - RL achieved higher average profitability and better adaptability to changing market conditions.
 
 ---
